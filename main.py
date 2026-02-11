@@ -40,7 +40,7 @@ BATCH_SIZE = 1024
 NUM_WORKERS = 4
 
 EPOCHS = 5
-RANDOM_SEEDS = [127, 801]
+RANDOM_SEEDS = [51, 2167]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
@@ -60,13 +60,14 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    training_data = MNIST(
+    full_training_data = MNIST(
         root=DATA_DIR, train=True, download=True, transform=ToTensor()
     )
+
     test_data = MNIST(root=DATA_DIR, train=False, download=True, transform=ToTensor())
 
-    train_size = int(0.8 * len(training_data))
-    val_size = len(training_data) - train_size
+    train_size = int(0.8 * len(full_training_data))
+    val_size = len(full_training_data) - train_size
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
         test_data, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS
@@ -82,7 +83,7 @@ def main():
             torch.cuda.manual_seed(seed)
 
         training_data, validation_data = random_split(
-            training_data, [train_size, val_size]
+            full_training_data, [train_size, val_size]
         )
 
         train_dataloader: DataLoader[MNIST] = DataLoader(
