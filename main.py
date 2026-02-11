@@ -30,6 +30,9 @@ from utils import train_loop, test_loop
 DATA_DIR = "data"
 LOGS_DIR = "logs"
 
+IMG_SIZE = 28 * 28
+NUM_CLASSES = 10
+
 BATCH_SIZE = 64
 EPOCHS = 5
 HIDDEN_LAYER_SIZES = [128, 256, 512, 1024, 2048]
@@ -61,17 +64,17 @@ loss_fn = nn.CrossEntropyLoss()
 
 
 logging.info(
-    f"Device: {device}\nTraining samples: {len(training_data)}\nTest samples: {len(test_data)}\nBatch size: {BATCH_SIZE}\nEpochs: {EPOCHS}\n-------------------------------"
+    f"Device: {device}\nTraining samples: {len(training_data)}\nTest samples: {len(test_data)}\nBatch size: {BATCH_SIZE}\nEpochs: {EPOCHS}\n\n-------------------------------\n"
 )
 
 for hidden_layer_size in HIDDEN_LAYER_SIZES:
     for momentum in MOMENTUM_COEFFICIENTS:
         for lr in LEARNING_RATES:
             logging.info(
-                f"Hidden layer size: {hidden_layer_size}\nMomentum: {momentum}\nLearning rate: {lr}\n"
+                f"Hidden layer size: {hidden_layer_size}\nMomentum: {momentum}\nLearning rate: {lr}"
             )
 
-            model = MyNeuralNetwork(hidden_layer_size=hidden_layer_size).to(device)
+            model = MyNeuralNetwork(input_layer_size=IMG_SIZE, hidden_layer_size=hidden_layer_size, output_layer_size=NUM_CLASSES).to(device)
 
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
@@ -82,6 +85,8 @@ for hidden_layer_size in HIDDEN_LAYER_SIZES:
             )
 
             for epoch in range(EPOCHS):
-                logging.info(f"Epoch {epoch+1}")
+                logging.info(f"\tEpoch {epoch+1}")
                 train_loop(train_dataloader, model, loss_fn, optimizer)
                 test_loop(test_dataloader, model, loss_fn)
+        
+            print("\n-------------------------------\n")

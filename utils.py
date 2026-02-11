@@ -23,7 +23,7 @@ def train_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mo
         if batch % 100 == 0:
             loss = loss.item()
             current = batch * batch_size + len(X)
-            logging.info(f"\tloss: {loss:>7f} [{current:>5d}/{size:>5d}]")
+            logging.debug(f"\t\tloss: {loss:>7f} [{current:>5d}/{size:>5d}]")
 
 
 def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Module):
@@ -45,4 +45,4 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
 
     test_loss /= num_batches
     correct /= size 
-    logging.info(f"\tTest Error: \n\t Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    logging.info(f"\t\tAccuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f}")
