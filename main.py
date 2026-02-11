@@ -1,5 +1,5 @@
-# P11   -   Giuseppe Amato DE5000051   -   Giuseppe Di Martino DE5000042
-
+# Giuseppe Amato DE5000051   -   Giuseppe Di Martino DE5000042
+# P11
 # Use the raw MNIST images as input for a 10-class classification task.
 # Build a dataset of N input–label pairs and split it into training and test sets
 # (at least 10,000 training samples and 2,500 test samples).
@@ -15,37 +15,54 @@
 # and report any systematic patterns you observe.
 
 import torch
+from torch import nn
+from torch import optim
 from torch.utils.data import DataLoader
-from torchvision import datasets
+from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
 from MyNeuralNetwork import MyNeuralNetwork
+from utils import train_loop, test_loop
 
 
 HIDDEN_LAYER_SIZES = [128, 256, 512, 1024, 2048]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 LEARNING_RATES = [1e-3, 1e-2, 1e-1]
 ROOT_DIR = "data"
+BATCH_SIZE = 64
 
-
-training_data = datasets.MNIST(
-    root=ROOT_DIR, train=True, download=True, transform=ToTensor()
-)
-
-test_data = datasets.MNIST(
-    root=ROOT_DIR, train=False, download=True, transform=ToTensor()
-)
-
-train_dataloader = DataLoader(training_data, batch_size=64, shuffle=True, num_workers=0)
-
-test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True, num_workers=0)
 
 device = (
-    torch.accelerator.current_accelerator().type
+    torch.accelerator.current_accelerator()
     if torch.accelerator.is_available()
-    else "cpu"
+    else torch.device("cpu")
+)
+
+training_data = MNIST(root=ROOT_DIR, train=True, download=True, transform=ToTensor())
+test_data = MNIST(root=ROOT_DIR, train=False, download=True, transform=ToTensor())
+
+train_dataloader: DataLoader[MNIST] = DataLoader(
+    training_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
+)
+test_dataloader: DataLoader[MNIST] = DataLoader(
+    test_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
 )
 
 model = MyNeuralNetwork(hidden_layer_size=HIDDEN_LAYER_SIZES[0]).to(device)
 
-print(model.hidden_layer_size)
+loss_fn = nn.CrossEntropyLoss()
+
+# Stochastic Gradient Descent
+optimizer = optim.SGD( 
+    model.parameters(),
+    lr=LEARNING_RATES[1],
+    momentum=MOMENTUM_COEFFICIENTS[2],
+    weight_decay=0.0,
+)
+
+epochs = 5
+
+for epoch in range(epochs):
+    print(f"Epoch {epoch+1}\n-------------------------------")
+    train_loop(train_dataloader, model, loss_fn, optimizer)
+    test_loop(test_dataloader, model, loss_fn)
