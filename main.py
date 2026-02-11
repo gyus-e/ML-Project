@@ -16,22 +16,26 @@
 
 import os
 import logging
-import random
-import numpy as np
+import itertools
 from datetime import datetime
+from typing import List
 
 import torch
 from torch import nn
 from torch import optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
 from MyNeuralNetwork import MyNeuralNetwork
-from utils import train_loop, test_loop
+from utils.StepData import StepData
+from utils.HyperConfiguration import HyperConfiguration
+from utils.utils import set_seed, benchmark
+from utils.logging_utils import log_csv_head, log_data
 
 DATA_DIR = "data"
 LOGS_DIR = "logs"
+MODELS_DIR = "model"
 
 IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
@@ -40,23 +44,14 @@ BATCH_SIZE = 1024
 NUM_WORKERS = 4
 
 EPOCHS = 5
-RANDOM_SEEDS = [51, 2167]
+RANDOM_SEEDS = [17, 132]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 
 
 def main():
-    os.makedirs(DATA_DIR, exist_ok=True)
-    os.makedirs(LOGS_DIR, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d-%H-%M-%S")
-    logging.basicConfig(
-        filename=f"{LOGS_DIR}/{timestamp}.csv", level=logging.INFO, format="%(message)s"
-    )
-    logging.info(
-        "device;training_samples;validation_samples;test_samples;batch_size;loss_function;random_seed;hidden_layer_size;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
-    )
+    log_csv_head()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -77,6 +72,7 @@ def main():
     train_size = int(0.8 * len(full_training_data))
     val_size = len(full_training_data) - train_size
     test_size = len(test_data)
+    sizes = (train_size, val_size, test_size)
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
         test_data,
@@ -88,11 +84,7 @@ def main():
     loss_fn = nn.CrossEntropyLoss()
 
     for seed in RANDOM_SEEDS:
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed(seed)
+        set_seed(seed)
 
         training_data, validation_data = random_split(
             full_training_data, [train_size, val_size]
@@ -104,6 +96,7 @@ def main():
             shuffle=True,
             num_workers=NUM_WORKERS,
         )
+
         validation_dataloader: DataLoader[MNIST] = DataLoader(
             validation_data,
             batch_size=BATCH_SIZE,
@@ -111,53 +104,126 @@ def main():
             num_workers=NUM_WORKERS,
         )
 
-        for hidden_layer_size in HIDDEN_LAYER_SIZES:
-            for lr in LEARNING_RATES:
-                for momentum in MOMENTUM_COEFFICIENTS:
+        configurations = itertools.product(
+            HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
+        )
 
-                    model = MyNeuralNetwork(
-                        input_layer_size=IMG_SIZE,
-                        hidden_layer_size=hidden_layer_size,
-                        output_layer_size=NUM_CLASSES,
-                    ).to(device)
+        best_loss = float("inf")
+        best_model = None
 
-                    # Stochastic Gradient Descent
-                    optimizer = optim.SGD(
-                        model.parameters(),
-                        lr=lr,
-                        momentum=momentum,
-                        weight_decay=0.0,
+        for hidden_layer_size, lr, momentum in configurations:
+            hyper_conf = HyperConfiguration(hidden_layer_size, lr, momentum)
+
+            model = MyNeuralNetwork(
+                input_layer_size=IMG_SIZE,
+                hidden_layer_size=hyper_conf.hidden_layer_size,
+                output_layer_size=NUM_CLASSES,
+            ).to(device)
+
+            # Stochastic Gradient Descent
+            optimizer = optim.SGD(
+                model.parameters(),
+                lr=hyper_conf.learning_rate,
+                momentum=hyper_conf.momentum_coefficient,
+                weight_decay=0.0,
+            )
+
+            all_epochs_data: List[tuple[StepData, StepData]] = []
+
+            for _ in range(EPOCHS):
+                (train_loss, train_correct), train_duration = benchmark(
+                    lambda model=model, optimizer=optimizer: train_loop(
+                        train_dataloader, model, loss_fn, optimizer
                     )
+                )
+                (val_loss, val_correct), val_duration = benchmark(
+                    lambda model=model: test_loop(validation_dataloader, model, loss_fn)
+                )
 
-                    for epoch in range(EPOCHS):
-                        start_time = datetime.now()
-                        train_loss, train_correct = train_loop(
-                            train_dataloader, model, loss_fn, optimizer
-                        )
-                        end_time = datetime.now()
-                        epoch_duration = (end_time - start_time).total_seconds()
-                        logging.info(
-                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{epoch_duration:>8f}"
-                        )
+                train_data = StepData(train_loss, train_correct, train_duration)
+                val_data = StepData(val_loss, val_correct, val_duration)
+                epoch_data = (train_data, val_data)
+                all_epochs_data.append(epoch_data)
 
-                        start_time = datetime.now()
-                        val_loss, val_correct = test_loop(
-                            validation_dataloader, model, loss_fn
-                        )
-                        end_time = datetime.now()
-                        epoch_duration = (end_time - start_time).total_seconds()
-                        logging.info(
-                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{epoch_duration:>8f}"
-                        )
+            (test_loss, test_correct), test_duration = benchmark(
+                lambda model=model: test_loop(test_dataloader, model, loss_fn)
+            )
+            test_data = StepData(test_loss, test_correct, test_duration)
+            model_data = (all_epochs_data, test_data)
 
-                    start_time = datetime.now()
-                    test_loss, test_correct = test_loop(test_dataloader, model, loss_fn)
-                    end_time = datetime.now()
-                    epoch_duration = (end_time - start_time).total_seconds()
-                    logging.info(
-                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{epoch_duration:>8f}"
-                    )
+            if test_loss < best_loss:
+                best_loss = test_loss
+                best_model = model
+
+            log_data(
+                device, sizes, BATCH_SIZE, loss_fn, seed, EPOCHS, hyper_conf, model_data
+            )
+        
+        if best_model is not None:
+            torch.save(best_model.state_dict(), f"{MODELS_DIR}/f{seed}.pth")
+
+
+def train_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Module, optimizer: torch.optim.Optimizer) -> tuple[float, float]:
+    device = model.parameters().__next__().device
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    train_loss = 0
+    correct = 0
+
+    model.train()
+    for X, y in dataloader:
+        X = X.to(device)
+        y = y.to(device)
+
+        pred = model(X)
+        loss = loss_fn(pred, y)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+        correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+    train_loss /= num_batches
+    correct /= size
+    
+    return train_loss, correct
+
+
+def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Module) -> tuple[float, float]:
+    device = model.parameters().__next__().device
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss = 0
+    correct = 0
+
+    model.eval()
+    with torch.no_grad():
+        for X, y in dataloader:
+            X = X.to(device)
+            y = y.to(device)
+
+            pred = model(X)
+            loss = loss_fn(pred, y)
+
+            test_loss += loss.item()
+            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+    test_loss /= num_batches
+    correct /= size
+
+    return test_loss, correct
 
 
 if __name__ == "__main__":
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d-%H-%M-%S")
+    logging.basicConfig(
+        filename=f"{LOGS_DIR}/{timestamp}.csv", level=logging.INFO, format="%(message)s"
+    )
+
     main()
