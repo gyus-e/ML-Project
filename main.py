@@ -89,4 +89,4 @@ for hidden_layer_size in HIDDEN_LAYER_SIZES:
                 train_loop(train_dataloader, model, loss_fn, optimizer)
                 test_loop(test_dataloader, model, loss_fn)
         
-            print("\n-------------------------------\n")
+            logging.info("\n\n-------------------------------\n")
