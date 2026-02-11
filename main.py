@@ -18,7 +18,7 @@ import os
 import logging
 import itertools
 from datetime import datetime
-from typing import List
+from typing import Callable, List
 
 import torch
 from torch import nn
@@ -175,12 +175,7 @@ def train_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mo
         X = X.to(device)
         y = y.to(device)
 
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        pred, loss = predict(X, y, model, loss_fn, lambda loss: evaluate(optimizer, loss))
 
         train_loss += loss.item()
         correct += (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -204,8 +199,7 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
             X = X.to(device)
             y = y.to(device)
 
-            pred = model(X)
-            loss = loss_fn(pred, y)
+            pred, loss = predict(X, y, model, loss_fn, lambda loss: None)
 
             test_loss += loss.item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -214,6 +208,19 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
     correct /= size
 
     return test_loss, correct
+
+
+def predict(X, y, model: nn.Module, loss_fn: nn.Module, evaluate_func: Callable[..., None]):
+    pred = model(X)
+    loss = loss_fn(pred, y)
+    evaluate_func(loss)
+    return pred, loss
+
+
+def evaluate(optimizer: torch.optim.Optimizer, loss):
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
 
 
 if __name__ == "__main__":
