@@ -61,17 +61,28 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     full_training_data = MNIST(
-        root=DATA_DIR, train=True, download=True, transform=ToTensor()
+        root=DATA_DIR,
+        train=True,
+        download=True,
+        transform=ToTensor(),
     )
 
-    test_data = MNIST(root=DATA_DIR, train=False, download=True, transform=ToTensor())
+    test_data = MNIST(
+        root=DATA_DIR,
+        train=False,
+        download=True,
+        transform=ToTensor(),
+    )
 
     train_size = int(0.8 * len(full_training_data))
     val_size = len(full_training_data) - train_size
     test_size = len(test_data)
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
-        test_data, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS
+        test_data,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=NUM_WORKERS,
     )
 
     loss_fn = nn.CrossEntropyLoss()
@@ -88,7 +99,10 @@ def main():
         )
 
         train_dataloader: DataLoader[MNIST] = DataLoader(
-            training_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS
+            training_data,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=NUM_WORKERS,
         )
         validation_dataloader: DataLoader[MNIST] = DataLoader(
             validation_data,
