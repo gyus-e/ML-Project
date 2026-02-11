@@ -1,5 +1,5 @@
 # Giuseppe Amato DE5000051   -   Giuseppe Di Martino DE5000042
-# P11
+# P11)
 # Use the raw MNIST images as input for a 10-class classification task.
 # Build a dataset of N input–label pairs and split it into training and test sets
 # (at least 10,000 training samples and 2,500 test samples).
@@ -35,9 +35,10 @@ NUM_CLASSES = 10
 
 BATCH_SIZE = 64
 EPOCHS = 5
-HIDDEN_LAYER_SIZES = [128, 256, 512, 1024, 2048]
+RANDOM_SEEDS = [42, 123, 2024]
+HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
+LEARNING_RATES = [0.01, 0.1, 0.5]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
-LEARNING_RATES = [1e-3, 1e-2, 1e-1]
 
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -64,29 +65,49 @@ loss_fn = nn.CrossEntropyLoss()
 
 
 logging.info(
-    f"Device: {device}\nTraining samples: {len(training_data)}\nTest samples: {len(test_data)}\nBatch size: {BATCH_SIZE}\nEpochs: {EPOCHS}\n\n-------------------------------\n"
+    f"""
+    Device: {device}
+    Training samples: {len(training_data)}
+    Test samples: {len(test_data)}
+    Loss function: {loss_fn}
+    Batch size: {BATCH_SIZE}
+    Epochs: {EPOCHS}
+    \n-------------------------------\n"""
 )
 
 for hidden_layer_size in HIDDEN_LAYER_SIZES:
-    for momentum in MOMENTUM_COEFFICIENTS:
-        for lr in LEARNING_RATES:
+    for lr in LEARNING_RATES:
+        for momentum in MOMENTUM_COEFFICIENTS:
             logging.info(
-                f"Hidden layer size: {hidden_layer_size}\nMomentum: {momentum}\nLearning rate: {lr}"
+                f"""
+                Hidden layer size: {hidden_layer_size}
+                Momentum: {momentum}
+                Learning rate: {lr}
+                \n"""
             )
 
-            model = MyNeuralNetwork(input_layer_size=IMG_SIZE, hidden_layer_size=hidden_layer_size, output_layer_size=NUM_CLASSES).to(device)
+            for seed in RANDOM_SEEDS:
+                torch.manual_seed(seed)
+                logging.info(f"Random seed: {seed}")
 
-            # Stochastic Gradient Descent
-            optimizer = optim.SGD(
-                model.parameters(),
-                lr=lr,
-                momentum=momentum,
-                weight_decay=0.0,
-            )
+                model = MyNeuralNetwork(
+                    input_layer_size=IMG_SIZE,
+                    hidden_layer_size=hidden_layer_size,
+                    output_layer_size=NUM_CLASSES,
+                ).to(device)
 
-            for epoch in range(EPOCHS):
-                logging.info(f"\tEpoch {epoch+1}")
-                train_loop(train_dataloader, model, loss_fn, optimizer)
-                test_loop(test_dataloader, model, loss_fn)
-        
+                # Stochastic Gradient Descent
+                optimizer = optim.SGD(
+                    model.parameters(),
+                    lr=lr,
+                    momentum=momentum,
+                    weight_decay=0.0,
+                )
+
+                for epoch in range(EPOCHS):
+                    logging.info(f"\tEpoch {epoch+1}")
+                    train_loop(train_dataloader, model, loss_fn, optimizer)
+                    test_loop(test_dataloader, model, loss_fn)
+
+                logging.info("\n")
             logging.info("\n\n-------------------------------\n")
