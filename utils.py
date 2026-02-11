@@ -45,4 +45,7 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
 
     test_loss /= num_batches
     correct /= size 
-    logging.info(f"\t\tAccuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f}")
+    logging.info(
+        f"\t\tAccuracy: {(100*correct):>0.1f}%\n"
+        f"\t\tAvg loss: {test_loss:>8f}\n"
+    )

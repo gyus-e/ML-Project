@@ -1,4 +1,5 @@
 .venv/
 data/
 logs/
+reports/
 __pycache__/

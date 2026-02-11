@@ -34,7 +34,7 @@ IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
 
 BATCH_SIZE = 64
-EPOCHS = 20
+EPOCHS = 10
 RANDOM_SEEDS = [42, 123, 2024]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
@@ -79,8 +79,8 @@ for hidden_layer_size in HIDDEN_LAYER_SIZES:
         for momentum in MOMENTUM_COEFFICIENTS:
             logging.info(
                 f"Hidden layer size: {hidden_layer_size}\n"
-                f"Momentum: {momentum}\n"
                 f"Learning rate: {lr}\n"
+                f"Momentum: {momentum}\n"
             )
 
             for seed in RANDOM_SEEDS:
@@ -104,7 +104,7 @@ for hidden_layer_size in HIDDEN_LAYER_SIZES:
                 )
 
                 for epoch in range(EPOCHS):
-                    logging.info(f"\tEpoch {epoch+1}")
+                    logging.info(f"\tEpoch {epoch+1}:")
                     train_loop(train_dataloader, model, loss_fn, optimizer)
                     test_loop(test_dataloader, model, loss_fn)
 
