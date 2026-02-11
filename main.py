@@ -34,7 +34,7 @@ IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
 
 BATCH_SIZE = 64
-EPOCHS = 5
+EPOCHS = 20
 RANDOM_SEEDS = [42, 123, 2024]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
@@ -65,29 +65,28 @@ loss_fn = nn.CrossEntropyLoss()
 
 
 logging.info(
-    f"""
-    Device: {device}
-    Training samples: {len(training_data)}
-    Test samples: {len(test_data)}
-    Loss function: {loss_fn}
-    Batch size: {BATCH_SIZE}
-    Epochs: {EPOCHS}
-    \n-------------------------------\n"""
+    f"Device: {device}\n"
+    f"Training samples: {len(training_data)}\n"
+    f"Test samples: {len(test_data)}\n"
+    f"Loss function: {loss_fn}\n"
+    f"Batch size: {BATCH_SIZE}\n"
+    f"Epochs: {EPOCHS}\n"
+    f"\n-------------------------------\n"
 )
 
 for hidden_layer_size in HIDDEN_LAYER_SIZES:
     for lr in LEARNING_RATES:
         for momentum in MOMENTUM_COEFFICIENTS:
             logging.info(
-                f"""
-                Hidden layer size: {hidden_layer_size}
-                Momentum: {momentum}
-                Learning rate: {lr}
-                \n"""
+                f"Hidden layer size: {hidden_layer_size}\n"
+                f"Momentum: {momentum}\n"
+                f"Learning rate: {lr}\n"
             )
 
             for seed in RANDOM_SEEDS:
                 torch.manual_seed(seed)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed(seed)
                 logging.info(f"Random seed: {seed}")
 
                 model = MyNeuralNetwork(
