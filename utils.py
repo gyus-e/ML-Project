@@ -44,8 +44,7 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
     test_loss /= num_batches
-    correct /= size 
-    logging.info(
-        f"\t\tAccuracy: {(100*correct):>0.1f}%\n"
-        f"\t\tAvg loss: {test_loss:>8f}\n"
-    )
+    correct /= size
+
+    return test_loss, correct
+

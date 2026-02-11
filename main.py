@@ -15,12 +15,15 @@
 # and report any systematic patterns you observe.
 
 import os
-from datetime import datetime
 import logging
+import random
+import numpy as np
+from datetime import datetime
+
 import torch
 from torch import nn
 from torch import optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
@@ -33,80 +36,107 @@ LOGS_DIR = "logs"
 IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
 
-BATCH_SIZE = 64
-EPOCHS = 10
-RANDOM_SEEDS = [42, 123, 2024]
+BATCH_SIZE = 1024
+NUM_WORKERS = 4
+
+EPOCHS = 5
+RANDOM_SEEDS = [127, 801]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 
 
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(LOGS_DIR, exist_ok=True)
+def main():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
 
-timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-logging.basicConfig(
-    filename=f"{LOGS_DIR}/{timestamp}.log", level=logging.INFO, format="%(message)s"
-)
+    timestamp = datetime.now().strftime("%Y%m%d-%H-%M-%S")
+    logging.basicConfig(
+        filename=f"{LOGS_DIR}/{timestamp}.csv", level=logging.INFO, format="%(message)s"
+    )
+    logging.info(
+        "device;training_samples;validation_samples;test_samples;batch_size;loss_function;epochs;random_seed;hidden_layer_size;learning_rate;momentum;epoch;accuracy;avg_loss;epoch_duration_seconds"
+    )
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-training_data = MNIST(root=DATA_DIR, train=True, download=True, transform=ToTensor())
-test_data = MNIST(root=DATA_DIR, train=False, download=True, transform=ToTensor())
+    training_data = MNIST(
+        root=DATA_DIR, train=True, download=True, transform=ToTensor()
+    )
+    test_data = MNIST(root=DATA_DIR, train=False, download=True, transform=ToTensor())
 
-train_dataloader: DataLoader[MNIST] = DataLoader(
-    training_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
-)
-test_dataloader: DataLoader[MNIST] = DataLoader(
-    test_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
-)
+    train_size = int(0.8 * len(training_data))
+    val_size = len(training_data) - train_size
 
-loss_fn = nn.CrossEntropyLoss()
+    test_dataloader: DataLoader[MNIST] = DataLoader(
+        test_data, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS
+    )
+
+    loss_fn = nn.CrossEntropyLoss()
+
+    for seed in RANDOM_SEEDS:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+
+        training_data, validation_data = random_split(
+            training_data, [train_size, val_size]
+        )
+
+        train_dataloader: DataLoader[MNIST] = DataLoader(
+            training_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS
+        )
+        validation_dataloader: DataLoader[MNIST] = DataLoader(
+            validation_data,
+            batch_size=BATCH_SIZE,
+            shuffle=False,
+            num_workers=NUM_WORKERS,
+        )
+
+        for hidden_layer_size in HIDDEN_LAYER_SIZES:
+            for lr in LEARNING_RATES:
+                for momentum in MOMENTUM_COEFFICIENTS:
+
+                    model = MyNeuralNetwork(
+                        input_layer_size=IMG_SIZE,
+                        hidden_layer_size=hidden_layer_size,
+                        output_layer_size=NUM_CLASSES,
+                    ).to(device)
+
+                    # Stochastic Gradient Descent
+                    optimizer = optim.SGD(
+                        model.parameters(),
+                        lr=lr,
+                        momentum=momentum,
+                        weight_decay=0.0,
+                    )
+
+                    for epoch in range(EPOCHS):
+                        start_time = datetime.now()
+
+                        train_loop(train_dataloader, model, loss_fn, optimizer)
+                        val_loss, correct = test_loop(
+                            validation_dataloader, model, loss_fn
+                        )
+
+                        end_time = datetime.now()
+                        epoch_duration = (end_time - start_time).total_seconds()
+                        logging.info(
+                            f"{device};{train_size};{val_size};{len(test_data)};{BATCH_SIZE};{loss_fn};{EPOCHS};{seed};{hidden_layer_size};{lr};{momentum};{epoch+1};{(100*correct):>0.1f}%;{val_loss:>8f};{epoch_duration:>8f}"
+                        )
+
+                    start_time = datetime.now()
+
+                    test_loss, test_correct = test_loop(test_dataloader, model, loss_fn)
+
+                    end_time = datetime.now()
+                    epoch_duration = (end_time - start_time).total_seconds()
+                    logging.info(
+                        f"{device};{train_size};{val_size};{len(test_data)};{BATCH_SIZE};{loss_fn};{EPOCHS};{seed};{hidden_layer_size};{lr};{momentum};TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{epoch_duration:>8f}"
+                    )
 
 
-logging.info(
-    f"Device: {device}\n"
-    f"Training samples: {len(training_data)}\n"
-    f"Test samples: {len(test_data)}\n"
-    f"Loss function: {loss_fn}\n"
-    f"Batch size: {BATCH_SIZE}\n"
-    f"Epochs: {EPOCHS}\n"
-    f"\n-------------------------------\n"
-)
-
-for hidden_layer_size in HIDDEN_LAYER_SIZES:
-    for lr in LEARNING_RATES:
-        for momentum in MOMENTUM_COEFFICIENTS:
-            logging.info(
-                f"Hidden layer size: {hidden_layer_size}\n"
-                f"Learning rate: {lr}\n"
-                f"Momentum: {momentum}\n"
-            )
-
-            for seed in RANDOM_SEEDS:
-                torch.manual_seed(seed)
-                if torch.cuda.is_available():
-                    torch.cuda.manual_seed(seed)
-                logging.info(f"Random seed: {seed}")
-
-                model = MyNeuralNetwork(
-                    input_layer_size=IMG_SIZE,
-                    hidden_layer_size=hidden_layer_size,
-                    output_layer_size=NUM_CLASSES,
-                ).to(device)
-
-                # Stochastic Gradient Descent
-                optimizer = optim.SGD(
-                    model.parameters(),
-                    lr=lr,
-                    momentum=momentum,
-                    weight_decay=0.0,
-                )
-
-                for epoch in range(EPOCHS):
-                    logging.info(f"\tEpoch {epoch+1}:")
-                    train_loop(train_dataloader, model, loss_fn, optimizer)
-                    test_loop(test_dataloader, model, loss_fn)
-
-                logging.info("\n")
-            logging.info("\n\n-------------------------------\n")
+if __name__ == "__main__":
+    main()
