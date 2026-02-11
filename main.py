@@ -14,6 +14,9 @@
 # (run each experiment at least twice with different random seeds),
 # and report any systematic patterns you observe.
 
+import os
+from datetime import datetime
+import logging
 import torch
 from torch import nn
 from torch import optim
@@ -24,22 +27,28 @@ from torchvision.transforms import ToTensor
 from MyNeuralNetwork import MyNeuralNetwork
 from utils import train_loop, test_loop
 
+DATA_DIR = "data"
+LOGS_DIR = "logs"
 
+BATCH_SIZE = 64
+EPOCHS = 5
 HIDDEN_LAYER_SIZES = [128, 256, 512, 1024, 2048]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 LEARNING_RATES = [1e-3, 1e-2, 1e-1]
-ROOT_DIR = "data"
-BATCH_SIZE = 64
 
 
-device = (
-    torch.accelerator.current_accelerator()
-    if torch.accelerator.is_available()
-    else torch.device("cpu")
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+logging.basicConfig(
+    filename=f"{LOGS_DIR}/{timestamp}.log", level=logging.INFO, format="%(message)s"
 )
 
-training_data = MNIST(root=ROOT_DIR, train=True, download=True, transform=ToTensor())
-test_data = MNIST(root=ROOT_DIR, train=False, download=True, transform=ToTensor())
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+training_data = MNIST(root=DATA_DIR, train=True, download=True, transform=ToTensor())
+test_data = MNIST(root=DATA_DIR, train=False, download=True, transform=ToTensor())
 
 train_dataloader: DataLoader[MNIST] = DataLoader(
     training_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
@@ -48,21 +57,31 @@ test_dataloader: DataLoader[MNIST] = DataLoader(
     test_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=0
 )
 
-model = MyNeuralNetwork(hidden_layer_size=HIDDEN_LAYER_SIZES[0]).to(device)
-
 loss_fn = nn.CrossEntropyLoss()
 
-# Stochastic Gradient Descent
-optimizer = optim.SGD( 
-    model.parameters(),
-    lr=LEARNING_RATES[1],
-    momentum=MOMENTUM_COEFFICIENTS[2],
-    weight_decay=0.0,
+
+logging.info(
+    f"Device: {device}\nTraining samples: {len(training_data)}\nTest samples: {len(test_data)}\nBatch size: {BATCH_SIZE}\nEpochs: {EPOCHS}\n-------------------------------"
 )
 
-epochs = 5
+for hidden_layer_size in HIDDEN_LAYER_SIZES:
+    for momentum in MOMENTUM_COEFFICIENTS:
+        for lr in LEARNING_RATES:
+            logging.info(
+                f"Hidden layer size: {hidden_layer_size}\nMomentum: {momentum}\nLearning rate: {lr}\n"
+            )
 
-for epoch in range(epochs):
-    print(f"Epoch {epoch+1}\n-------------------------------")
-    train_loop(train_dataloader, model, loss_fn, optimizer)
-    test_loop(test_dataloader, model, loss_fn)
+            model = MyNeuralNetwork(hidden_layer_size=hidden_layer_size).to(device)
+
+            # Stochastic Gradient Descent
+            optimizer = optim.SGD(
+                model.parameters(),
+                lr=lr,
+                momentum=momentum,
+                weight_decay=0.0,
+            )
+
+            for epoch in range(EPOCHS):
+                logging.info(f"Epoch {epoch+1}")
+                train_loop(train_dataloader, model, loss_fn, optimizer)
+                test_loop(test_dataloader, model, loss_fn)
