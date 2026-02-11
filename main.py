@@ -55,7 +55,7 @@ def main():
         filename=f"{LOGS_DIR}/{timestamp}.csv", level=logging.INFO, format="%(message)s"
     )
     logging.info(
-        "device;training_samples;validation_samples;test_samples;batch_size;loss_function;epochs;random_seed;hidden_layer_size;learning_rate;momentum;epoch;accuracy;avg_loss;epoch_duration_seconds"
+        "device;training_samples;validation_samples;test_samples;batch_size;loss_function;random_seed;hidden_layer_size;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -68,6 +68,7 @@ def main():
 
     train_size = int(0.8 * len(full_training_data))
     val_size = len(full_training_data) - train_size
+    test_size = len(test_data)
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
         test_data, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS
@@ -116,26 +117,31 @@ def main():
 
                     for epoch in range(EPOCHS):
                         start_time = datetime.now()
-
-                        train_loop(train_dataloader, model, loss_fn, optimizer)
-                        val_loss, correct = test_loop(
-                            validation_dataloader, model, loss_fn
+                        train_loss, train_correct = train_loop(
+                            train_dataloader, model, loss_fn, optimizer
                         )
-
                         end_time = datetime.now()
                         epoch_duration = (end_time - start_time).total_seconds()
                         logging.info(
-                            f"{device};{train_size};{val_size};{len(test_data)};{BATCH_SIZE};{loss_fn};{EPOCHS};{seed};{hidden_layer_size};{lr};{momentum};{epoch+1};{(100*correct):>0.1f}%;{val_loss:>8f};{epoch_duration:>8f}"
+                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{epoch_duration:>8f}"
+                        )
+
+                        start_time = datetime.now()
+                        val_loss, val_correct = test_loop(
+                            validation_dataloader, model, loss_fn
+                        )
+                        end_time = datetime.now()
+                        epoch_duration = (end_time - start_time).total_seconds()
+                        logging.info(
+                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{epoch_duration:>8f}"
                         )
 
                     start_time = datetime.now()
-
                     test_loss, test_correct = test_loop(test_dataloader, model, loss_fn)
-
                     end_time = datetime.now()
                     epoch_duration = (end_time - start_time).total_seconds()
                     logging.info(
-                        f"{device};{train_size};{val_size};{len(test_data)};{BATCH_SIZE};{loss_fn};{EPOCHS};{seed};{hidden_layer_size};{lr};{momentum};TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{epoch_duration:>8f}"
+                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{epoch_duration:>8f}"
                     )
 
 
