@@ -43,9 +43,10 @@ def plot_curves(df):
             plt.legend()
             plt.tight_layout()
 
-            os.makedirs(os.path.join(FIGURES_DIR, f"SEED{seed}"), exist_ok=True)
-            os.makedirs(os.path.join(FIGURES_DIR, f"SEED{seed}", f"HL{cfg['hidden_layer_size']}"), exist_ok=True)
-            fname = os.path.join(FIGURES_DIR, f"SEED{seed}", f"HL{cfg['hidden_layer_size']}", f"LR{cfg['learning_rate']}_M{cfg['momentum']}.png")
+            os.makedirs(os.path.join(FIGURES_DIR, f"HL{cfg['hidden_layer_size']}"), exist_ok=True)
+            os.makedirs(os.path.join(FIGURES_DIR, f"HL{cfg['hidden_layer_size']}", f"LR{cfg['learning_rate']}"), exist_ok=True)
+            os.makedirs(os.path.join(FIGURES_DIR, f"HL{cfg['hidden_layer_size']}", f"LR{cfg['learning_rate']}", f"M{cfg['momentum']}"), exist_ok=True)
+            fname = os.path.join(FIGURES_DIR, f"HL{cfg['hidden_layer_size']}", f"LR{cfg['learning_rate']}", f"M{cfg['momentum']}", f"SEED{seed}.png")
             plt.savefig(fname)
             plt.close()
 
