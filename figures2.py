@@ -1,6 +1,10 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+FIGURES_DIR = 'figures/'
+LOGS_DIR = 'logs/'
 
 def study_neural_network(csv_path):
     # ---------------------------------------------------------
@@ -49,7 +53,8 @@ def study_neural_network(csv_path):
     plt.title('Impact of Learning Rate ($\eta$) and Momentum on Test Accuracy\n(Averaged across hidden sizes and seeds)')
     plt.xlabel('Momentum Coefficient')
     plt.ylabel('Learning Rate ($\eta$)')
-    plt.show()
+    plt.savefig(os.path.join(FIGURES_DIR, 'LR_Momentum_Heatmap.png'))
+    plt.close()
 
     # ---------------------------------------------------------
     # 3. HIDDEN LAYER SIZE ANALYSIS
@@ -83,7 +88,8 @@ def study_neural_network(csv_path):
     plt.ylabel('Test Accuracy')
     plt.xscale('log') # Log scale often clearer for doubling sizes (64, 128, 256...)
     plt.xticks(hidden_sizes, hidden_sizes) # Force labels to be the specific sizes
-    plt.show()
+    plt.savefig(os.path.join(FIGURES_DIR, 'Hidden_Layer_Size_Impact.png'))
+    plt.close()
 
     # ---------------------------------------------------------
     # 4. TRAINING DYNAMICS & CONVERGENCE
@@ -114,7 +120,8 @@ def study_neural_network(csv_path):
     plt.xlabel('Epoch')
     plt.legend(title='Hidden Size / Phase', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(FIGURES_DIR, 'Training_Dynamics_Loss.png'))
+    plt.close()
 
     # ---------------------------------------------------------
     # 4.1 VALIDATION DYNAMICS & CONVERGENCE
@@ -141,7 +148,8 @@ def study_neural_network(csv_path):
     plt.xlabel('Epoch')
     plt.legend(title='Hidden Size / Phase', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.show()
+    plt.savefig(os.path.join(FIGURES_DIR, 'Validation_Dynamics_Loss.png'))
+    plt.close()
 
 
     # ---------------------------------------------------------
@@ -184,4 +192,4 @@ def study_neural_network(csv_path):
 
 # Execute the study
 if __name__ == "__main__":
-    study_neural_network('logs/full.csv')
+    study_neural_network(os.path.join(LOGS_DIR, 'full.csv'))
