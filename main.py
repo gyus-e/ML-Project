@@ -17,6 +17,7 @@
 import os
 import logging
 import random
+import itertools
 import numpy as np
 from datetime import datetime
 
@@ -28,7 +29,7 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
 from MyNeuralNetwork import MyNeuralNetwork
-from utils import train_loop, test_loop
+from utils import train_loop, test_loop, benchmark
 
 DATA_DIR = "data"
 LOGS_DIR = "logs"
@@ -112,51 +113,50 @@ def main():
         )
 
         for hidden_layer_size in HIDDEN_LAYER_SIZES:
-            for lr in LEARNING_RATES:
-                for momentum in MOMENTUM_COEFFICIENTS:
+            model = MyNeuralNetwork(
+                input_layer_size=IMG_SIZE,
+                hidden_layer_size=hidden_layer_size,
+                output_layer_size=NUM_CLASSES,
+            ).to(device)
 
-                    model = MyNeuralNetwork(
-                        input_layer_size=IMG_SIZE,
-                        hidden_layer_size=hidden_layer_size,
-                        output_layer_size=NUM_CLASSES,
-                    ).to(device)
+            for lr, momentum in itertools.product(
+                LEARNING_RATES, MOMENTUM_COEFFICIENTS
+            ):
+                # Stochastic Gradient Descent
+                optimizer = optim.SGD(
+                    model.parameters(),
+                    lr=lr,
+                    momentum=momentum,
+                    weight_decay=0.0,
+                )
 
-                    # Stochastic Gradient Descent
-                    optimizer = optim.SGD(
-                        model.parameters(),
-                        lr=lr,
-                        momentum=momentum,
-                        weight_decay=0.0,
-                    )
-
-                    for epoch in range(EPOCHS):
-                        start_time = datetime.now()
-                        train_loss, train_correct = train_loop(
+                for epoch in range(EPOCHS):
+                    (train_loss, train_correct), train_time = benchmark(
+                        lambda model=model, optimizer=optimizer: train_loop(
                             train_dataloader, model, loss_fn, optimizer
                         )
-                        end_time = datetime.now()
-                        epoch_duration = (end_time - start_time).total_seconds()
-                        logging.info(
-                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{epoch_duration:>8f}"
-                        )
+                    )
+                    logging.info(
+                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{train_time:>8f}"
+                    )
 
-                        start_time = datetime.now()
-                        val_loss, val_correct = test_loop(
+                    (val_loss, val_correct), val_time = benchmark(
+                        lambda model=model: test_loop(
                             validation_dataloader, model, loss_fn
                         )
-                        end_time = datetime.now()
-                        epoch_duration = (end_time - start_time).total_seconds()
-                        logging.info(
-                            f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{epoch_duration:>8f}"
-                        )
-
-                    start_time = datetime.now()
-                    test_loss, test_correct = test_loop(test_dataloader, model, loss_fn)
-                    end_time = datetime.now()
-                    epoch_duration = (end_time - start_time).total_seconds()
-                    logging.info(
-                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{epoch_duration:>8f}"
                     )
+                    logging.info(
+                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{val_time:>8f}"
+                    )
+
+                (test_loss, test_correct), test_time = benchmark(
+                    lambda model=model: test_loop(
+                        test_dataloader, model, loss_fn
+                    )
+                )
+                logging.info(
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{test_time:>8f}"
+                )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,11 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
+from typing import Any, Callable, TypeVar
+from datetime import datetime, timedelta
+
+T = TypeVar('T')
+
 
 def train_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Module, optimizer: torch.optim.Optimizer) -> tuple[float, float]:
     device = model.parameters().__next__().device
@@ -54,3 +59,9 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
 
     return test_loss, correct
 
+
+def benchmark(fun: Callable[..., T]) -> tuple[T, float]:
+    start_time = datetime.now()
+    result = fun()
+    end_time = datetime.now()
+    return result, (end_time - start_time).total_seconds()
