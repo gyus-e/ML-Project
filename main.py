@@ -61,6 +61,8 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # transform viene applicato a ogni immagine quando viene caricata.
+    # Ci limitiamo a trasformarle in matrici 28x28 (dimensione in pixel delle immagini di MNIST), senza normalizzarle.
     full_training_data = MNIST(
         root=DATA_DIR,
         train=True,
@@ -112,51 +114,52 @@ def main():
             num_workers=NUM_WORKERS,
         )
 
-        for hidden_layer_size in HIDDEN_LAYER_SIZES:
+        for hidden_layer_size, lr, momentum in itertools.product(
+            HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
+        ):
+            # È importante ricreare il modello ogni volta che cambia un iperparametro, non solo quando cambia il layer size, 
+            # perché altrimenti verrebbero riutilizzati i pesi del training precedente
             model = MyNeuralNetwork(
                 input_layer_size=IMG_SIZE,
                 hidden_layer_size=hidden_layer_size,
                 output_layer_size=NUM_CLASSES,
             ).to(device)
+            
+            # Stochastic Gradient Descent
+            optimizer = optim.SGD(
+                model.parameters(),
+                lr=lr,
+                momentum=momentum,
+                weight_decay=0.0,
+            )
 
-            for lr, momentum in itertools.product(
-                LEARNING_RATES, MOMENTUM_COEFFICIENTS
-            ):
-                # Stochastic Gradient Descent
-                optimizer = optim.SGD(
-                    model.parameters(),
-                    lr=lr,
-                    momentum=momentum,
-                    weight_decay=0.0,
-                )
-
-                for epoch in range(EPOCHS):
-                    (train_loss, train_correct), train_time = benchmark(
-                        lambda model=model, optimizer=optimizer: train_loop(
-                            train_dataloader, model, loss_fn, optimizer
-                        )
-                    )
-                    logging.info(
-                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{train_time:>8f}"
-                    )
-
-                    (val_loss, val_correct), val_time = benchmark(
-                        lambda model=model: test_loop(
-                            validation_dataloader, model, loss_fn
-                        )
-                    )
-                    logging.info(
-                        f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{val_time:>8f}"
-                    )
-
-                (test_loss, test_correct), test_time = benchmark(
-                    lambda model=model: test_loop(
-                        test_dataloader, model, loss_fn
+            for epoch in range(EPOCHS):
+                (train_loss, train_correct), train_time = benchmark(
+                    lambda model=model, optimizer=optimizer: train_loop(
+                        train_dataloader, model, loss_fn, optimizer
                     )
                 )
                 logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{test_time:>8f}"
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{train_time:>8f}"
                 )
+
+                (val_loss, val_correct), val_time = benchmark(
+                    lambda model=model: test_loop(
+                        validation_dataloader, model, loss_fn
+                    )
+                )
+                logging.info(
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{val_time:>8f}"
+                )
+
+            (test_loss, test_correct), test_time = benchmark(
+                lambda model=model: test_loop(
+                    test_dataloader, model, loss_fn
+                )
+            )
+            logging.info(
+                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{test_time:>8f}"
+            )
 
 
 if __name__ == "__main__":
