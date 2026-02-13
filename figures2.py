@@ -147,38 +147,38 @@ def study_neural_network(csv_path):
     # ---------------------------------------------------------
     # 5. STABILITY & SENSITIVITY TO INITIALIZATION
     # ---------------------------------------------------------
-    print("\n--- Analyzing Stability (Sensitivity to Initialization) ---")
+    # print("\n--- Analyzing Stability (Sensitivity to Initialization) ---")
     
-    # Calculate Standard Deviation of Test Accuracy across seeds for every configuration
-    stability_df = test_df.groupby(['hidden_layer_size', 'learning_rate', 'momentum'])['accuracy'].agg(['mean', 'std']).reset_index()
+    # # Calculate Standard Deviation of Test Accuracy across seeds for every configuration
+    # stability_df = test_df.groupby(['hidden_layer_size', 'learning_rate', 'momentum'])['accuracy'].agg(['mean', 'std']).reset_index()
     
-    # Filter for interesting cases (high mean accuracy) to see if they are stable
-    top_performers = stability_df.sort_values(by='mean', ascending=False).head(10)
+    # # Filter for interesting cases (high mean accuracy) to see if they are stable
+    # top_performers = stability_df.sort_values(by='mean', ascending=False).head(10)
     
-    print("\nTop 10 Configurations by Accuracy (with Stability metric):")
-    print(f"{'Hidden Size':<12} | {'LR':<6} | {'Mom':<6} | {'Mean Acc':<10} | {'Std Dev (Stability)':<20}")
-    print("-" * 65)
-    for _, row in top_performers.iterrows():
-        print(f"{int(row['hidden_layer_size']):<12} | {row['learning_rate']:<6} | {row['momentum']:<6} | {row['mean']:.4f}     | {row['std']:.4f}")
+    # print("\nTop 10 Configurations by Accuracy (with Stability metric):")
+    # print(f"{'Hidden Size':<12} | {'LR':<6} | {'Mom':<6} | {'Mean Acc':<10} | {'Std Dev (Stability)':<20}")
+    # print("-" * 65)
+    # for _, row in top_performers.iterrows():
+    #     print(f"{int(row['hidden_layer_size']):<12} | {row['learning_rate']:<6} | {row['momentum']:<6} | {row['mean']:.4f}     | {row['std']:.4f}")
 
-    # Visualizing Stability systematic patterns
-    plt.figure(figsize=(10, 6))
-    sns.scatterplot(
-        data=stability_df, 
-        x='mean', 
-        y='std', 
-        hue='learning_rate', 
-        size='hidden_layer_size',
-        sizes=(20, 200),
-        palette='deep'
-    )
-    plt.title('Stability Analysis: Mean Accuracy vs. Initialization Sensitivity (Std Dev)')
-    plt.xlabel('Mean Test Accuracy (Higher is better)')
-    plt.ylabel('Standard Deviation across Seeds (Lower is better)')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Hyperparameters')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    # # Visualizing Stability systematic patterns
+    # plt.figure(figsize=(10, 6))
+    # sns.scatterplot(
+    #     data=stability_df, 
+    #     x='mean', 
+    #     y='std', 
+    #     hue='learning_rate', 
+    #     size='hidden_layer_size',
+    #     sizes=(20, 200),
+    #     palette='deep'
+    # )
+    # plt.title('Stability Analysis: Mean Accuracy vs. Initialization Sensitivity (Std Dev)')
+    # plt.xlabel('Mean Test Accuracy (Higher is better)')
+    # plt.ylabel('Standard Deviation across Seeds (Lower is better)')
+    # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Hyperparameters')
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
     
     print("\n--- Analysis Complete ---")
 
