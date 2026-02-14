@@ -143,7 +143,7 @@ def main():
                     )
                 )
                 logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f}%;{train_loss:>8f};{train_time:>8f}"
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
                 )
 
                 (val_loss, val_correct), val_time = benchmark(
@@ -152,7 +152,7 @@ def main():
                     )
                 )
                 logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f}%;{val_loss:>8f};{val_time:>8f}"
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
                 )
 
             (test_loss, test_correct), test_time = benchmark(
@@ -161,7 +161,7 @@ def main():
                 )
             )
             logging.info(
-                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f}%;{test_loss:>8f};{test_time:>8f}"
+                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
 
 
