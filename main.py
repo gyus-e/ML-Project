@@ -40,8 +40,8 @@ NUM_CLASSES = 10
 BATCH_SIZE = 1024
 NUM_WORKERS = 4
 
-EPOCHS = 5
-RANDOM_SEEDS = [51, 2167]
+EPOCHS = 15
+RANDOM_SEEDS = [43, 689, 5093]
 HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
 LEARNING_RATES = [0.01, 0.1, 0.5]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
@@ -86,6 +86,7 @@ def main():
         batch_size=BATCH_SIZE,
         shuffle=False,
         num_workers=NUM_WORKERS,
+        pin_memory=True,
     )
 
     loss_fn = nn.CrossEntropyLoss()
@@ -106,12 +107,14 @@ def main():
             batch_size=BATCH_SIZE,
             shuffle=True,
             num_workers=NUM_WORKERS,
+            pin_memory=True,
         )
         validation_dataloader: DataLoader[MNIST] = DataLoader(
             validation_data,
             batch_size=BATCH_SIZE,
             shuffle=False,
             num_workers=NUM_WORKERS,
+            pin_memory=True,
         )
 
         for hidden_layer_size, lr, momentum in itertools.product(
