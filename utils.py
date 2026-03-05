@@ -14,8 +14,8 @@ def train_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mo
 
     model.train()
     for X, y in dataloader:
-        X = X.to(device)
-        y = y.to(device)
+        X = X.to(device, non_blocking=True)
+        y = y.to(device, non_blocking=True)
 
         pred = model(X)
         loss = loss_fn(pred, y)
@@ -43,8 +43,8 @@ def test_loop(dataloader: DataLoader[Dataset], model: nn.Module, loss_fn: nn.Mod
     model.eval()
     with torch.no_grad():
         for X, y in dataloader:
-            X = X.to(device)
-            y = y.to(device)
+            X = X.to(device, non_blocking=True)
+            y = y.to(device, non_blocking=True)
 
             pred = model(X)
             loss = loss_fn(pred, y)

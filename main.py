@@ -133,8 +133,8 @@ def main():
                 input_layer_size=IMG_SIZE,
                 hidden_layer_size=hidden_layer_size,
                 output_layer_size=NUM_CLASSES,
-            ).to(device)
-            
+            ).to(device, non_blocking=True)
+
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
                 model.parameters(),
