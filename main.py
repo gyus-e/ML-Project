@@ -21,11 +21,12 @@ import random
 import itertools
 import numpy as np
 from datetime import datetime
+from sklearn.model_selection import train_test_split
 
 import torch
 from torch import nn
 from torch import optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
@@ -105,9 +106,16 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
 
-        training_data, validation_data = random_split(
-            full_training_data, [train_size, val_size]
+        train_idx, val_idx = train_test_split(
+            range(len(full_training_data)),
+            test_size=0.2,
+            train_size=0.8,
+            random_state=seed,
+            shuffle=True,
+            stratify=full_training_data.targets.numpy(),
         )
+        training_data = Subset(full_training_data, train_idx) 
+        validation_data = Subset(full_training_data, val_idx)
 
         train_dataloader: DataLoader[MNIST] = DataLoader(
             training_data,
