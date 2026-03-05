@@ -38,8 +38,8 @@ LOGS_DIR = "logs"
 IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
 
-BATCH_SIZE = 1024
-NUM_WORKERS = 4
+BATCH_SIZE = 1000
+NUM_WORKERS = 2
 
 EPOCHS = 15
 RANDOM_SEEDS = [43, 689, 5093]
@@ -87,6 +87,7 @@ def main():
         batch_size=BATCH_SIZE,
         shuffle=False,
         num_workers=NUM_WORKERS,
+        persistent_workers=True,
         pin_memory=True,
     )
 
@@ -111,6 +112,7 @@ def main():
             batch_size=BATCH_SIZE,
             shuffle=True,
             num_workers=NUM_WORKERS,
+            persistent_workers=True,
             pin_memory=True,
         )
         validation_dataloader: DataLoader[MNIST] = DataLoader(
@@ -118,6 +120,7 @@ def main():
             batch_size=BATCH_SIZE,
             shuffle=False,
             num_workers=NUM_WORKERS,
+            persistent_workers=True,
             pin_memory=True,
         )
 
