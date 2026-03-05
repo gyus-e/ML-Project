@@ -41,10 +41,10 @@ NUM_CLASSES = 10
 BATCH_SIZE = 1000
 NUM_WORKERS = 2
 
-EPOCHS = 15
+EPOCHS = 30
 RANDOM_SEEDS = [43, 689, 5093]
-HIDDEN_LAYER_SIZES = [64, 128, 256, 512, 1024]
-LEARNING_RATES = [0.01, 0.1, 0.5]
+HIDDEN_LAYER_SIZES = [50, 100, 500, 1000, 5000]
+LEARNING_RATES = [0.001, 0.01, 0.1]
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 
 
@@ -78,9 +78,9 @@ def main():
         transform=ToTensor(),
     )
 
-    train_size = int(0.8 * len(full_training_data))
-    val_size = len(full_training_data) - train_size
-    test_size = len(test_data)
+    train_size = int(0.8 * len(full_training_data)) # 48,000 samples for training
+    val_size = len(full_training_data) - train_size # 12,000 samples for validation
+    test_size = len(test_data) # 10,000 samples for testing
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
         test_data,
@@ -127,7 +127,7 @@ def main():
         for hidden_layer_size, lr, momentum in itertools.product(
             HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
         ):
-            # È importante ricreare il modello ogni volta che cambia un iperparametro, non solo quando cambia il layer size, 
+            # È importante ricreare il modello ogni volta che cambia un iperparametro, non solo quando cambia il layer size,
             # perché altrimenti verrebbero riutilizzati i pesi del training precedente
             model = MyNeuralNetwork(
                 input_layer_size=IMG_SIZE,
@@ -154,18 +154,14 @@ def main():
                 )
 
                 (val_loss, val_correct), val_time = benchmark(
-                    lambda model=model: test_loop(
-                        validation_dataloader, model, loss_fn
-                    )
+                    lambda model=model: test_loop(validation_dataloader, model, loss_fn)
                 )
                 logging.info(
                     f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
                 )
 
             (test_loss, test_correct), test_time = benchmark(
-                lambda model=model: test_loop(
-                    test_dataloader, model, loss_fn
-                )
+                lambda model=model: test_loop(test_dataloader, model, loss_fn)
             )
             logging.info(
                 f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
