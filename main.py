@@ -34,6 +34,7 @@ from utils import train_loop, test_loop, benchmark
 
 DATA_DIR = "data"
 LOGS_DIR = "logs"
+MODELS_DIR = "models"
 
 IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
@@ -51,6 +52,7 @@ MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(LOGS_DIR, exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H-%M-%S")
     logging.basicConfig(
@@ -166,6 +168,8 @@ def main():
             logging.info(
                 f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
+
+            torch.save(model.state_dict(), os.path.join(MODELS_DIR, f'model_weights_{hidden_layer_size}_{lr}_{momentum}_{seed}.pth'))
 
 
 if __name__ == "__main__":
