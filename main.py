@@ -15,6 +15,7 @@
 # and report any systematic patterns you observe.
 
 import os
+import gc
 import logging
 import random
 import itertools
@@ -92,6 +93,9 @@ def main():
     loss_fn = nn.CrossEntropyLoss()
 
     for seed in RANDOM_SEEDS:
+        gc.collect()
+        torch.cuda.empty_cache()
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
