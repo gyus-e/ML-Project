@@ -167,6 +167,8 @@ def main():
                 weight_decay=0.0,
             )
 
+            final_val_loss = float("inf")
+
             for epoch in range(EPOCHS):
                 (train_loss, train_correct), train_time = benchmark(
                     lambda model=model, optimizer=optimizer: train_loop(
@@ -177,17 +179,19 @@ def main():
                     f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
                 )
 
-            (val_loss, val_correct), val_time = benchmark(
-                lambda model=model: test_loop(validation_dataloader, model, loss_fn)
-            )
-            logging.info(
-                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
-            )
+                (val_loss, val_correct), val_time = benchmark(
+                    lambda model=model: test_loop(validation_dataloader, model, loss_fn)
+                )
+                logging.info(
+                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
+                )
 
-            if best_model is None or val_loss < best_model.val_loss:
+                final_val_loss = val_loss
+
+            if best_model is None or final_val_loss < best_model.val_loss:
                 state_dict = model.state_dict()
                 best_model = TrainingSnapshot(
-                    state_dict, hidden_layer_size, lr, momentum, val_loss
+                    state_dict, hidden_layer_size, lr, momentum, final_val_loss
                 )
 
         if best_model is not None:
