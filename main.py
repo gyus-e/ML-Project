@@ -142,7 +142,7 @@ def main():
                 output_layer_size=NUM_CLASSES,
             ).to(device, non_blocking=True)
 
-            hl_activation = model.linear_relu_stack[1].__class__.__name__
+            hl_activation = model.feedforward_network[1].__class__.__name__
 
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
@@ -196,7 +196,7 @@ def main():
 
             model.load_state_dict(best_model.state_dict)
 
-            hl_activation = model.linear_relu_stack[1].__class__.__name__
+            hl_activation = model.feedforward_network[1].__class__.__name__
             
             test_data = MNIST(
                 root=DATA_DIR,

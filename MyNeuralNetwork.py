@@ -9,7 +9,7 @@ class MyNeuralNetwork(nn.Module):
         self.output_layer_size = output_layer_size
 
         self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
+        self.feedforward_network = nn.Sequential(
             nn.Linear(self.input_layer_size, self.hidden_layer_size),
             nn.Tanh(), # Hidden layer activation
             nn.Linear(self.hidden_layer_size, self.output_layer_size),
@@ -18,5 +18,5 @@ class MyNeuralNetwork(nn.Module):
 
     def forward(self, x):
         x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
+        logits = self.feedforward_network(x)
         return logits
