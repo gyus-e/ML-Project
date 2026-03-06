@@ -90,10 +90,7 @@ def main():
         download=True,
         transform=ToTensor(),
     )
-
-    train_size = int(0.8 * len(full_training_data)) # 48,000 samples for training
-    val_size = len(full_training_data) - train_size # 12,000 samples for validation
-    test_size = len(test_data) # 10,000 samples for testing
+    test_size = len(test_data)  # 10,000 samples for testing
 
     test_dataloader: DataLoader[MNIST] = DataLoader(
         test_data,
@@ -124,8 +121,12 @@ def main():
             shuffle=True,
             stratify=full_training_data.targets.numpy(),
         )
-        training_data = Subset(full_training_data, train_idx) 
+
+        training_data = Subset(full_training_data, train_idx)
+        train_size = len(training_data)  # 48,000 samples for training
+
         validation_data = Subset(full_training_data, val_idx)
+        val_size = len(validation_data)  # 12,000 samples for validation
 
         train_dataloader: DataLoader[MNIST] = DataLoader(
             training_data,
