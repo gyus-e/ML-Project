@@ -71,7 +71,7 @@ def main():
         filename=f"{LOGS_DIR}/{timestamp}.csv", level=logging.INFO, format="%(message)s"
     )
     logging.info(
-        "device;training_samples;validation_samples;test_samples;batch_size;loss_function;random_seed;hidden_layer_size;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
+        "device;data_samples;batch_size;loss_function;random_seed;hidden_layer_size;hidden_layer_activation;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,23 +83,6 @@ def main():
         train=True,
         download=True,
         transform=ToTensor(),
-    )
-
-    test_data = MNIST(
-        root=DATA_DIR,
-        train=False,
-        download=True,
-        transform=ToTensor(),
-    )
-    test_size = len(test_data)  # 10,000 samples for testing
-
-    test_dataloader: DataLoader[MNIST] = DataLoader(
-        test_data,
-        batch_size=BATCH_SIZE,
-        shuffle=False,
-        num_workers=NUM_WORKERS,
-        persistent_workers=True,
-        pin_memory=True,
     )
 
     loss_fn = nn.CrossEntropyLoss()
@@ -159,6 +142,8 @@ def main():
                 output_layer_size=NUM_CLASSES,
             ).to(device, non_blocking=True)
 
+            hl_activation = model.linear_relu_stack[1].__class__.__name__
+
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
                 model.parameters(),
@@ -176,14 +161,14 @@ def main():
                     )
                 )
                 logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
+                    f"{device};{train_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
                 )
 
                 (val_loss, val_correct), val_time = benchmark(
                     lambda model=model: test_loop(validation_dataloader, model, loss_fn)
                 )
                 logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
+                    f"{device};{val_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
                 )
 
                 final_val_loss = val_loss
@@ -211,11 +196,30 @@ def main():
 
             model.load_state_dict(best_model.state_dict)
 
+            hl_activation = model.linear_relu_stack[1].__class__.__name__
+            
+            test_data = MNIST(
+                root=DATA_DIR,
+                train=False,
+                download=True,
+                transform=ToTensor(),
+            )
+            test_size = len(test_data)  # 10,000 samples for testing
+
+            test_dataloader: DataLoader[MNIST] = DataLoader(
+                test_data,
+                batch_size=BATCH_SIZE,
+                shuffle=False,
+                num_workers=NUM_WORKERS,
+                persistent_workers=True,
+                pin_memory=True,
+            )
+
             (test_loss, test_correct), test_time = benchmark(
-                lambda model=model: test_loop(test_dataloader, model, loss_fn)
+                lambda model=model, test_dataloader=test_dataloader: test_loop(test_dataloader, model, loss_fn)
             )
             logging.info(
-                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{best_model.hidden_layer_size};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
+                f"{device};{test_size};{BATCH_SIZE};{loss_fn};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
 
 
