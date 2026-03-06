@@ -15,7 +15,6 @@
 # and report any systematic patterns you observe.
 
 import os
-import gc
 import logging
 import random
 import itertools
@@ -145,9 +144,6 @@ def main():
         for hidden_layer_size, lr, momentum in itertools.product(
             HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
         ):
-            gc.collect()
-            torch.cuda.empty_cache()
-
             # È importante ricreare il modello ogni volta che cambia un iperparametro, non solo quando cambia il layer size,
             # perché altrimenti verrebbero riutilizzati i pesi del training precedente
             model = MyNeuralNetwork(
