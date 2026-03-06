@@ -76,7 +76,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # transform viene applicato a ogni immagine quando viene caricata.
-    # Ci limitiamo a trasformarle in matrici 28x28 (dimensione in pixel delle immagini di MNIST), senza normalizzarle.
+    # ToTensor le trasforma in matrici 28x28 (dimensione in pixel delle immagini di MNIST) e applica Min-Max Normalization (scala i valori da 0-255 a 0-1).
     full_training_data = MNIST(
         root=DATA_DIR,
         train=True,
