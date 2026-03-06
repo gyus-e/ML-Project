@@ -27,7 +27,7 @@ from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import MNIST
-from torchvision.transforms import ToTensor
+from torchvision.transforms import Compose, ToTensor, Normalize
 from sklearn.model_selection import train_test_split
 
 from MyNeuralNetwork import MyNeuralNetwork
@@ -40,6 +40,8 @@ MODELS_DIR = "models"
 
 IMG_SIZE = 28 * 28
 NUM_CLASSES = 10
+MNIST_MEAN = 0.13066047430038452
+MNIST_STD = 0.30810782313346863
 
 BATCH_SIZE = 100
 NUM_WORKERS = 2
@@ -56,6 +58,33 @@ HIDDEN_LAYER_SIZES = [
     IMG_SIZE * 10,
 ]
 
+# transform viene applicato a ogni immagine quando viene caricata.
+# ToTensor le trasforma in matrici 28x28 (dimensione in pixel delle immagini di MNIST) e applica Min-Max Normalization (scala i valori da 0-255 a 0-1).
+# Normalize standardizza i valori sottraendo la media e dividendo per la deviazione standard del dataset MNIST.
+TRANSFORM = Compose(
+    [
+        ToTensor(),
+        Normalize(mean=MNIST_MEAN, std=MNIST_STD),
+    ]
+)
+
+FULL_TRAINING_DATA = MNIST(
+    root=DATA_DIR,
+    train=True,
+    download=True,
+    transform=TRANSFORM,
+)
+
+TEST_DATA = MNIST(
+    root=DATA_DIR,
+    train=False,
+    download=True,
+    transform=TRANSFORM,
+)
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+LOSS_FN = nn.CrossEntropyLoss()
 
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -70,19 +99,6 @@ def main():
         "device;data_samples;batch_size;loss_function;random_seed;hidden_layer_size;hidden_layer_activation;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # transform viene applicato a ogni immagine quando viene caricata.
-    # ToTensor le trasforma in matrici 28x28 (dimensione in pixel delle immagini di MNIST) e applica Min-Max Normalization (scala i valori da 0-255 a 0-1).
-    full_training_data = MNIST(
-        root=DATA_DIR,
-        train=True,
-        download=True,
-        transform=ToTensor(),
-    )
-
-    loss_fn = nn.CrossEntropyLoss()
-
     for seed in RANDOM_SEEDS:
         random.seed(seed)
         np.random.seed(seed)
@@ -91,19 +107,20 @@ def main():
             torch.cuda.manual_seed(seed)
 
         train_idx, val_idx = train_test_split(
-            range(len(full_training_data)),
+            range(len(FULL_TRAINING_DATA)),
             test_size=0.2,
             train_size=0.8,
             random_state=seed,
             shuffle=True,
-            stratify=full_training_data.targets.numpy(),
+            stratify=FULL_TRAINING_DATA.targets.numpy(),
         )
 
-        training_data = Subset(full_training_data, train_idx)
-        train_size = len(training_data)  # 48,000 samples for training
+        training_data = Subset(FULL_TRAINING_DATA, train_idx)
+        validation_data = Subset(FULL_TRAINING_DATA, val_idx)
 
-        validation_data = Subset(full_training_data, val_idx)
+        train_size = len(training_data)  # 48,000 samples for training
         val_size = len(validation_data)  # 12,000 samples for validation
+        test_size = len(TEST_DATA)  # 10,000 samples for testing
 
         train_dataloader: DataLoader[MNIST] = DataLoader(
             training_data,
@@ -137,7 +154,7 @@ def main():
                 input_layer_size=IMG_SIZE,
                 hidden_layer_size=hidden_layer_size,
                 output_layer_size=NUM_CLASSES,
-            ).to(device, non_blocking=True)
+            ).to(DEVICE, non_blocking=True)
 
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
@@ -153,18 +170,18 @@ def main():
             for epoch in range(EPOCHS):
                 (train_loss, train_correct), train_time = benchmark(
                     lambda model=model, optimizer=optimizer: train_loop(
-                        train_dataloader, model, loss_fn, optimizer
+                        train_dataloader, model, LOSS_FN, optimizer
                     )
                 )
                 logging.info(
-                    f"{device};{train_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
+                    f"{DEVICE};{train_size};{BATCH_SIZE};{LOSS_FN};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
                 )
 
                 (val_loss, val_correct), val_time = benchmark(
-                    lambda model=model: test_loop(validation_dataloader, model, loss_fn)
+                    lambda model=model: test_loop(validation_dataloader, model, LOSS_FN)
                 )
                 logging.info(
-                    f"{device};{val_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
+                    f"{DEVICE};{val_size};{BATCH_SIZE};{LOSS_FN};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
                 )
 
                 final_val_loss = val_loss
@@ -191,22 +208,14 @@ def main():
                 input_layer_size=IMG_SIZE,
                 hidden_layer_size=best_model.hidden_layer_size,
                 output_layer_size=NUM_CLASSES,
-            ).to(device, non_blocking=True)
+            ).to(DEVICE, non_blocking=True)
 
             model.load_state_dict(best_model.state_dict)
 
             hl_activation = model.feedforward_network[1]
 
-            test_data = MNIST(
-                root=DATA_DIR,
-                train=False,
-                download=True,
-                transform=ToTensor(),
-            )
-            test_size = len(test_data)  # 10,000 samples for testing
-
             test_dataloader: DataLoader[MNIST] = DataLoader(
-                test_data,
+                TEST_DATA,
                 batch_size=BATCH_SIZE,
                 shuffle=False,
                 num_workers=NUM_WORKERS,
@@ -216,11 +225,11 @@ def main():
 
             (test_loss, test_correct), test_time = benchmark(
                 lambda model=model, test_dataloader=test_dataloader: test_loop(
-                    test_dataloader, model, loss_fn
+                    test_dataloader, model, LOSS_FN
                 )
             )
             logging.info(
-                f"{device};{test_size};{BATCH_SIZE};{loss_fn};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
+                f"{DEVICE};{test_size};{BATCH_SIZE};{LOSS_FN};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
 
 
