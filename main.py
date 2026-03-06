@@ -45,13 +45,9 @@ BATCH_SIZE = 100
 NUM_WORKERS = 2
 
 EPOCHS = 30
-
 RANDOM_SEEDS = [43, 689, 5093]
-
 LEARNING_RATES = [1e-3, 1e-2, 1e-1]
-
 MOMENTUM_COEFFICIENTS = [0.1, 0.5, 0.9]
-
 HIDDEN_LAYER_SIZES = [
     int(np.sqrt(IMG_SIZE)),
     int(np.average([IMG_SIZE, NUM_CLASSES])),
@@ -88,9 +84,6 @@ def main():
     loss_fn = nn.CrossEntropyLoss()
 
     for seed in RANDOM_SEEDS:
-        gc.collect()
-        torch.cuda.empty_cache()
-
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -120,6 +113,7 @@ def main():
             persistent_workers=True,
             pin_memory=True,
         )
+
         validation_dataloader: DataLoader[MNIST] = DataLoader(
             validation_data,
             batch_size=BATCH_SIZE,
@@ -134,6 +128,9 @@ def main():
         for hidden_layer_size, lr, momentum in itertools.product(
             HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
         ):
+            gc.collect()
+            torch.cuda.empty_cache()
+
             # È importante ricreare il modello ogni volta che cambia un iperparametro, non solo quando cambia il layer size,
             # perché altrimenti verrebbero riutilizzati i pesi del training precedente
             model = MyNeuralNetwork(
@@ -141,8 +138,6 @@ def main():
                 hidden_layer_size=hidden_layer_size,
                 output_layer_size=NUM_CLASSES,
             ).to(device, non_blocking=True)
-
-            hl_activation = model.feedforward_network[1].__class__.__name__
 
             # Stochastic Gradient Descent
             optimizer = optim.SGD(
@@ -152,6 +147,7 @@ def main():
                 weight_decay=0.0,
             )
 
+            hl_activation = model.feedforward_network[1]
             final_val_loss = float("inf")
 
             for epoch in range(EPOCHS):
@@ -174,9 +170,12 @@ def main():
                 final_val_loss = val_loss
 
             if best_model is None or final_val_loss < best_model.val_loss:
-                state_dict = model.state_dict()
                 best_model = TrainingSnapshot(
-                    state_dict, hidden_layer_size, lr, momentum, final_val_loss
+                    model.state_dict(),
+                    hidden_layer_size,
+                    lr,
+                    momentum,
+                    final_val_loss,
                 )
 
         if best_model is not None:
@@ -196,8 +195,8 @@ def main():
 
             model.load_state_dict(best_model.state_dict)
 
-            hl_activation = model.feedforward_network[1].__class__.__name__
-            
+            hl_activation = model.feedforward_network[1]
+
             test_data = MNIST(
                 root=DATA_DIR,
                 train=False,
@@ -216,7 +215,9 @@ def main():
             )
 
             (test_loss, test_correct), test_time = benchmark(
-                lambda model=model, test_dataloader=test_dataloader: test_loop(test_dataloader, model, loss_fn)
+                lambda model=model, test_dataloader=test_dataloader: test_loop(
+                    test_dataloader, model, loss_fn
+                )
             )
             logging.info(
                 f"{device};{test_size};{BATCH_SIZE};{loss_fn};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
