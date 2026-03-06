@@ -21,7 +21,6 @@ import random
 import itertools
 import numpy as np
 from datetime import datetime
-from sklearn.model_selection import train_test_split
 
 import torch
 from torch import nn
@@ -29,8 +28,10 @@ from torch import optim
 from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
+from sklearn.model_selection import train_test_split
 
 from MyNeuralNetwork import MyNeuralNetwork
+from TrainingSnapshot import TrainingSnapshot
 from utils import train_loop, test_loop, benchmark
 
 DATA_DIR = "data"
@@ -145,6 +146,8 @@ def main():
             pin_memory=True,
         )
 
+        best_model: TrainingSnapshot | None = None
+
         for hidden_layer_size, lr, momentum in itertools.product(
             HIDDEN_LAYER_SIZES, LEARNING_RATES, MOMENTUM_COEFFICIENTS
         ):
@@ -174,21 +177,42 @@ def main():
                     f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};TRAIN;{(100*train_correct):>0.1f};{train_loss:>8f};{train_time:>8f}"
                 )
 
-                (val_loss, val_correct), val_time = benchmark(
-                    lambda model=model: test_loop(validation_dataloader, model, loss_fn)
+            (val_loss, val_correct), val_time = benchmark(
+                lambda model=model: test_loop(validation_dataloader, model, loss_fn)
+            )
+            logging.info(
+                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
+            )
+
+            if best_model is None or val_loss < best_model.val_loss:
+                state_dict = model.state_dict()
+                best_model = TrainingSnapshot(
+                    state_dict, hidden_layer_size, lr, momentum, val_loss
                 )
-                logging.info(
-                    f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
-                )
+
+        if best_model is not None:
+            torch.save(
+                best_model.state_dict,
+                os.path.join(
+                    MODELS_DIR,
+                    f"model_seed{seed}_size{best_model.hidden_layer_size}_lr{best_model.lr}_mom{best_model.momentum}.pth",
+                ),
+            )
+
+            model = MyNeuralNetwork(
+                input_layer_size=IMG_SIZE,
+                hidden_layer_size=best_model.hidden_layer_size,
+                output_layer_size=NUM_CLASSES,
+            ).to(device, non_blocking=True)
+
+            model.load_state_dict(best_model.state_dict)
 
             (test_loss, test_correct), test_time = benchmark(
                 lambda model=model: test_loop(test_dataloader, model, loss_fn)
             )
             logging.info(
-                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{hidden_layer_size};{lr};{momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
+                f"{device};{train_size};{val_size};{test_size};{BATCH_SIZE};{loss_fn};{seed};{best_model.hidden_layer_size};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
-
-            torch.save(model.state_dict(), os.path.join(MODELS_DIR, f'model_weights_{hidden_layer_size}_{lr}_{momentum}_{seed}.pth'))
 
 
 if __name__ == "__main__":
