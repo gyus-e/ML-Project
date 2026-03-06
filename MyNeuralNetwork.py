@@ -1,7 +1,7 @@
 from torch import nn
 
 class MyNeuralNetwork(nn.Module):
-    def __init__(self, input_layer_size, hidden_layer_size, output_layer_size):
+    def __init__(self, input_layer_size: int, hidden_layer_size: int, output_layer_size: int):
         super().__init__()
         
         self.input_layer_size = input_layer_size
