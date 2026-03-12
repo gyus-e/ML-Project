@@ -225,7 +225,7 @@ def main():
                 )
             )
             logging.info(
-                f"{DEVICE};{test_size};{BATCH_SIZE};{LOSS_FN};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};;TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
+                f"{DEVICE};{test_size};{BATCH_SIZE};{LOSS_FN};{seed};{best_model.hidden_layer_size};{hl_activation};{best_model.lr};{best_model.momentum};{EPOCHS};{best_model.epoch};TEST;{(100*test_correct):>0.1f};{test_loss:>8f};{test_time:>8f}"
             )
 
 
