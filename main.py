@@ -195,6 +195,7 @@ def main():
                 best_model.state_dict,
                 os.path.join(
                     MODELS_DIR,
+                    timestamp,
                     f"model_seed{seed}_size{best_model.hidden_layer_size}_lr{best_model.lr}_mom{best_model.momentum}.pth",
                 ),
             )
