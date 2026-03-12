@@ -161,7 +161,6 @@ def main():
             )
 
             hl_activation = model.feedforward_network[1]
-            final_val_loss = float("inf")
 
             for epoch in range(EPOCHS):
                 (train_loss, train_correct), train_time = benchmark(
@@ -182,14 +181,14 @@ def main():
 
                 final_val_loss = val_loss
 
-            if best_model is None or final_val_loss < best_model.val_loss:
-                best_model = TrainingSnapshot(
-                    model.state_dict(),
-                    hidden_layer_size,
-                    lr,
-                    momentum,
-                    final_val_loss,
-                )
+                if best_model is None or final_val_loss < best_model.val_loss:
+                    best_model = TrainingSnapshot(
+                        model.state_dict(),
+                        hidden_layer_size,
+                        lr,
+                        momentum,
+                        final_val_loss,
+                    )
 
         if best_model is not None:
             torch.save(
