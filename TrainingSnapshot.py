@@ -6,4 +6,5 @@ class TrainingSnapshot:
         self.hidden_layer_size = hidden_layer_size
         self.lr = lr
         self.momentum = momentum
+        self.epoch = epoch
         self.val_loss = val_loss
