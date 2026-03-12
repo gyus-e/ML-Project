@@ -97,6 +97,8 @@ def main():
     logging.info(
         "device;data_samples;batch_size;loss_function;random_seed;hidden_layer_size;hidden_layer_activation;learning_rate;momentum;epochs;epoch;phase;accuracy;loss;duration"
     )
+    current_models_dir = os.path.join(MODELS_DIR, timestamp)
+    os.makedirs(current_models_dir, exist_ok=True)
 
     for seed in RANDOM_SEEDS:
         random.seed(seed)
@@ -187,6 +189,7 @@ def main():
                         hidden_layer_size,
                         lr,
                         momentum,
+                        epoch,
                         final_val_loss,
                     )
 
@@ -194,9 +197,8 @@ def main():
             torch.save(
                 best_model.state_dict,
                 os.path.join(
-                    MODELS_DIR,
-                    timestamp,
-                    f"model_seed{seed}_size{best_model.hidden_layer_size}_lr{best_model.lr}_mom{best_model.momentum}.pth",
+                    current_models_dir,
+                    f"model_seed{seed}_size{best_model.hidden_layer_size}_lr{best_model.lr}_mom{best_model.momentum}_epoch{best_model.epoch}.pth",
                 ),
             )
 
