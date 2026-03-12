@@ -181,16 +181,14 @@ def main():
                     f"{DEVICE};{val_size};{BATCH_SIZE};{LOSS_FN};{seed};{hidden_layer_size};{hl_activation};{lr};{momentum};{EPOCHS};{epoch+1};VAL;{(100*val_correct):>0.1f};{val_loss:>8f};{val_time:>8f}"
                 )
 
-                final_val_loss = val_loss
-
-                if best_model is None or final_val_loss < best_model.val_loss:
+                if best_model is None or val_loss < best_model.val_loss:
                     best_model = TrainingSnapshot(
                         model.state_dict(),
                         hidden_layer_size,
                         lr,
                         momentum,
                         epoch,
-                        final_val_loss,
+                        val_loss,
                     )
 
         if best_model is not None:
